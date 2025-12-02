@@ -1,11 +1,10 @@
-
 import { GoogleGenAI, Type } from "@google/genai";
 import { PaletteResponse } from '../types';
 
 const getApiKey = (): string => {
-    const apiKey = process.env.API_KEY;
+    const apiKey = import.meta.env.VITE_API_KEY; 
     if (!apiKey) {
-        throw new Error("API_KEY environment variable not set");
+        throw new Error("VITE_API_KEY environment variable not set");
     }
     return apiKey;
 };
@@ -26,14 +25,18 @@ export const generatePalette = async (mood: string): Promise<PaletteResponse> =>
                 },
                 justification: {
                     type: Type.STRING,
-                    description: "A brief, aesthetic justification for the chosen color palette, explaining how it relates to the user's mood/keyword."
+                    description: "A brief, aesthetic justification for the chosen color palette."
                 }
             },
             required: ['palette', 'justification']
         };
 
-        const prompt = `You are a professional Graphic Designer and Color Theory Expert specializing in cute, adorable, and cheerful aesthetics. Based on the mood or keyword "${mood}", generate a unique and appealing color palette. The palette must have exactly 5 Hex color codes. Also, provide a brief aesthetic justification for your choice.`;
-        
+        const prompt =
+            `You are a professional Graphic Designer and Color Theory Expert specializing in cute, adorable, and cheerful aesthetics. 
+            Based on the mood or keyword "${mood}", generate a unique and appealing color palette. 
+            The palette must have exactly 5 Hex color codes. 
+            Also, provide a brief justification.`;
+
         const response = await ai.models.generateContent({
             model: "gemini-2.5-flash",
             contents: prompt,
