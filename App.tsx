@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { GoogleGenerativeAI } from "@google/genai";
+import { GoogleAIClient } from "@google/generative-ai"; // ← LIBRARY YANG BENAR
 
 function App() {
   const [mood, setMood] = useState("");
@@ -7,7 +7,8 @@ function App() {
   const [palette, setPalette] = useState<string[]>([]);
   const [explanation, setExplanation] = useState("");
 
-  const genAI = new GoogleGenerativeAI(import.meta.env.VITE_GEMINI_API_KEY);
+  // AMBIL API KEY DARI NETLIFY ENV
+  const client = new GoogleAIClient(import.meta.env.VITE_GEMINI_API_KEY);
 
   const generatePalette = async () => {
     if (!mood.trim()) return;
@@ -17,8 +18,8 @@ function App() {
     setExplanation("");
 
     try {
-      const model = genAI.getGenerativeModel({
-        model: "gemini-2.0-flash",
+      const model = client.getGenerativeModel({
+        model: "gemini-1.5-flash", // model stabil
       });
 
       const result = await model.generateContent([
@@ -31,7 +32,7 @@ function App() {
         `
       ]);
 
-      const text = result.response.text();
+      const text = await result.response.text();
       const data = JSON.parse(text);
 
       setPalette(data.colors || []);
