@@ -1,95 +1,147 @@
-import React, { useState, useCallback } from 'react';
-import { generatePalette } from './services/geminiService';
-import ColorPalette from './components/ColorPalette';
-import { PaletteResponse } from './types';
+import { useState } from "react";
+import { GoogleGenerativeAI } from "@google/genai";
 
-const LoadingSpinner: React.FC = () => (
-    <div className="flex justify-center items-center my-8">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-4 border-pink-500"></div>
-    </div>
-);
+function App() {
+  const [mood, setMood] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [palette, setPalette] = useState<string[]>([]);
+  const [explanation, setExplanation] = useState("");
 
-const App: React.FC = () => {
-    const [mood, setMood] = useState<string>('');
-    const [paletteResponse, setPaletteResponse] = useState<PaletteResponse | null>(null);
-    const [isLoading, setIsLoading] = useState<boolean>(false);
-    const [error, setError] = useState<string | null>(null);
+  const genAI = new GoogleGenerativeAI(import.meta.env.VITE_GEMINI_API_KEY);
 
-    const handleSubmit = useCallback(async (event: React.FormEvent<HTMLFormElement>) => {
-        event.preventDefault();
-        if (!mood.trim()) {
-            setError("Please enter a mood or keyword.");
-            return;
+  const generatePalette = async () => {
+    if (!mood.trim()) return;
+
+    setLoading(true);
+    setPalette([]);
+    setExplanation("");
+
+    try {
+      const model = genAI.getGenerativeModel({
+        model: "gemini-2.0-flash",
+      });
+
+      const result = await model.generateContent([
+        `Generate a cohesive 5-color palette (HEX codes only) with a short aesthetic explanation for the mood: "${mood}". 
+        Format response strictly as:
+        {
+          "colors": ["#HEX", "#HEX", "#HEX", "#HEX", "#HEX"],
+          "explanation": "text"
         }
-        setIsLoading(true);
-        setError(null);
-        setPaletteResponse(null);
+        `
+      ]);
 
-        try {
-            const result = await generatePalette(mood);
-            setPaletteResponse(result);
-        } catch (err) {
-            setError(err instanceof Error ? err.message : "An unexpected error occurred.");
-        } finally {
-            setIsLoading(false);
-        }
-    }, [mood]);
+      const text = result.response.text();
+      const data = JSON.parse(text);
 
-    return (
-        <div className="min-h-screen bg-[#F5F5F5] flex items-center justify-center p-4 selection:bg-pink-200">
-            <main className="bg-white rounded-2xl shadow-lg shadow-emerald-200 p-6 sm:p-10 max-w-2xl w-full transform transition-all duration-300">
-                <header className="text-center">
-                    <h1 className="text-3xl sm:text-4xl font-bold text-pink-500 tracking-tight">
-                        Smart Color Palette Generator
-                    </h1>
-                    <p className="mt-2 text-slate-500">
-                        Describe a mood, get a cute & cheerful color palette!
-                    </p>
-                </header>
+      setPalette(data.colors || []);
+      setExplanation(data.explanation || "");
 
-                <form onSubmit={handleSubmit} className="mt-8 flex flex-col sm:flex-row gap-3">
-                    <input
-                        type="text"
-                        value={mood}
-                        onChange={(e) => setMood(e.target.value)}
-                        placeholder="Ketikkan Mood Desain Anda (e.g., Rustic, Futuristik)"
-                        className="flex-grow w-full px-4 py-3 text-lg text-slate-700 bg-pink-50 border-2 border-pink-200 rounded-lg focus:outline-none focus:ring-4 focus:ring-pink-300 focus:border-pink-400 transition"
-                        disabled={isLoading}
-                    />
-                    <button
-                        type="submit"
-                        disabled={isLoading}
-                        className="px-8 py-3 bg-pink-500 text-white font-bold text-lg rounded-lg shadow-md hover:bg-pink-600 focus:outline-none focus:ring-4 focus:ring-pink-300 disabled:bg-pink-300 disabled:cursor-not-allowed transition-all duration-300 transform hover:scale-105"
-                    >
-                        Generate
-                    </button>
-                </form>
+    } catch (err) {
+      console.error(err);
+      alert("Error generating palette");
+    }
 
-                <div className="mt-6 min-h-[250px]">
-                    {isLoading && <LoadingSpinner />}
-                    {error && (
-                        <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 rounded-md" role="alert">
-                            <p className="font-bold">Oops!</p>
-                            <p>{error}</p>
-                        </div>
-                    )}
-                    {paletteResponse && (
-                        <div className="animate-fade-in">
-                            <ColorPalette colors={paletteResponse.palette} />
-                            <blockquote className="mt-8 bg-sky-50 border-l-4 border-sky-300 p-4 rounded-r-lg">
-                                <p className="text-slate-600 italic">
-                                    {paletteResponse.justification}
-                                </p>
-                            </blockquote>
-                        </div>
-                    )}
-                </div>
-                 <footer className="text-center text-xs text-slate-400 mt-8">
-                    <p>Powered by Gemini API</p>
-                </footer>
-            </main>
+    setLoading(false);
+  };
+
+  return (
+    <div style={styles.container}>
+      <h1 style={styles.title}>Smart Color Palette Generator 🎨</h1>
+
+      <input
+        style={styles.input}
+        placeholder="Masukkan mood... (contoh: cozy, bold, dreamy)"
+        value={mood}
+        onChange={(e) => setMood(e.target.value)}
+      />
+
+      <button style={styles.button} onClick={generatePalette} disabled={loading}>
+        {loading ? "Generating..." : "Generate Palette"}
+      </button>
+
+      {palette.length > 0 && (
+        <div style={styles.paletteBox}>
+          <h2 style={styles.sectionTitle}>Generated Palette:</h2>
+
+          <div style={styles.colorsRow}>
+            {palette.map((color, idx) => (
+              <div key={idx} style={{ ...styles.colorBlock, backgroundColor: color }}>
+                <span style={styles.colorHex}>{color}</span>
+              </div>
+            ))}
+          </div>
+
+          <p style={styles.explanation}>{explanation}</p>
         </div>
-    );
+      )}
+    </div>
+  );
+}
+
+const styles: Record<string, React.CSSProperties> = {
+  container: {
+    padding: "40px",
+    fontFamily: "Inter, sans-serif",
+    maxWidth: "800px",
+    margin: "0 auto",
+    textAlign: "center",
+  },
+  title: {
+    fontSize: "32px",
+    fontWeight: 700,
+  },
+  input: {
+    padding: "12px 16px",
+    width: "70%",
+    borderRadius: "10px",
+    border: "1px solid #ccc",
+    marginTop: "20px",
+    fontSize: "16px",
+  },
+  button: {
+    marginTop: "20px",
+    padding: "12px 20px",
+    background: "black",
+    color: "white",
+    borderRadius: "10px",
+    fontSize: "16px",
+    cursor: "pointer",
+  },
+  paletteBox: {
+    marginTop: "40px",
+    textAlign: "left",
+  },
+  sectionTitle: {
+    fontSize: "22px",
+    marginBottom: "10px",
+    fontWeight: 600,
+  },
+  colorsRow: {
+    display: "flex",
+    gap: "12px",
+    marginBottom: "20px",
+  },
+  colorBlock: {
+    flex: 1,
+    height: "80px",
+    borderRadius: "10px",
+    position: "relative",
+  },
+  colorHex: {
+    position: "absolute",
+    bottom: "8px",
+    left: "8px",
+    background: "rgba(255,255,255,0.8)",
+    padding: "4px 6px",
+    borderRadius: "6px",
+    fontSize: "12px",
+  },
+  explanation: {
+    fontSize: "16px",
+    lineHeight: "1.6",
+    opacity: 0.9,
+  },
 };
 
 export default App;
