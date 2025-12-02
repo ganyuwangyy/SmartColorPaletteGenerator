@@ -1,0 +1,5 @@
+{
+  "name": "Smart Color Palette Generator (SCPG)",
+  "description": "An application that generates a 5-color palette and an aesthetic justification based on a user-provided mood or keyword, using the Gemini API.",
+  "requestFramePermissions": []
+}
